@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Coursera Bypass</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <header>
+      <div class="logo-container">
+        <span class="logo-icon">⚡</span>
+        <h1>Coursera Bypass</h1>
+      </div>
+      <p class="subtitle">Tester Assistant</p>
+    </header>
+
+    <main>
+      <!-- Main Enable Toggle -->
+      <div class="card glass">
+        <div class="control-row">
+          <div class="control-label">
+            <span class="label-title">Bypass Active</span>
+            <span class="label-desc">Master switch for the extension</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="bypass-toggle" checked>
+            <span class="slider round"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Feature Toggles -->
+      <div class="card glass feature-toggles">
+        <div class="control-row spacing">
+          <div class="control-label">
+            <span class="label-title sub-feature">Auto-Click Buttons</span>
+            <span class="label-desc">Automatically click "Mark as completed"</span>
+          </div>
+          <label class="switch small">
+            <input type="checkbox" id="autoclick-toggle" checked>
+            <span class="slider round"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Stats Card -->
+      <div class="card glass stats-card">
+        <div class="stat-item">
+          <span class="stat-value" id="skip-count">0</span>
+          <span class="stat-name">Timers Skipped</span>
+        </div>
+      </div>
+    </main>
+
+    <footer>
+      <div class="footer-actions">
+        <button id="open-readings-btn" class="primary-btn" style="background: linear-gradient(135deg, #0b408b 0%, #136ef0 100%);">📖 Auto-Complete Readings</button>
+        <button id="open-videos-btn" class="primary-btn" style="background: linear-gradient(135deg, #a54e0c 0%, #de6000 100%);">🎥 Auto-Watch Videos</button>
+        <button id="search-quiz-btn" class="primary-btn">🔍 Search Quiz Questions</button>
+        <button id="reset-stats-btn" class="secondary-btn">Reset Counter</button>
+      </div>
+    </footer>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
