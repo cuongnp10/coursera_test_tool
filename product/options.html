@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cài đặt AI & Extension - Coursera Bypass</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="options-wrapper">
+    <!-- Header -->
+    <header class="options-header glass">
+      <div class="header-left">
+        <span class="logo-icon">⚡</span>
+        <div>
+          <h1>Coursera Automation Suite</h1>
+          <p class="subtitle">Cấu hình API Key & Trợ lý AI</p>
+        </div>
+      </div>
+      <div class="header-badge">
+        <span class="status-dot"></span>
+        <span>Local Storage Secure</span>
+      </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="options-main">
+      <!-- Provider Tabs -->
+      <section class="provider-tabs-section glass">
+        <h2 class="section-title">Chọn Nhà Cung Cấp AI</h2>
+        <div class="provider-tabs" id="provider-tabs">
+          <button class="provider-tab active" data-provider="gemini">
+            <span class="tab-icon">✨</span>
+            <div class="tab-info">
+              <span class="tab-name">Google Gemini</span>
+              <span class="tab-desc">Khuyên dùng, miễn phí & nhanh</span>
+            </div>
+            <span class="active-badge" id="gemini-active-indicator">Đang chọn</span>
+          </button>
+
+          <button class="provider-tab" data-provider="openai">
+            <span class="tab-icon">🧠</span>
+            <div class="tab-info">
+              <span class="tab-name">OpenAI ChatGPT</span>
+              <span class="tab-desc">GPT-4o, GPT-4o Mini</span>
+            </div>
+            <span class="active-badge hidden" id="openai-active-indicator">Đang chọn</span>
+          </button>
+
+          <button class="provider-tab" data-provider="deepseek">
+            <span class="tab-icon">⚡</span>
+            <div class="tab-info">
+              <span class="tab-name">DeepSeek</span>
+              <span class="tab-desc">DeepSeek-V3 & DeepSeek-R1</span>
+            </div>
+            <span class="active-badge hidden" id="deepseek-active-indicator">Đang chọn</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Settings Card -->
+      <section class="card glass settings-card">
+        <div class="card-header">
+          <div class="card-title-group">
+            <span class="provider-current-icon" id="current-icon">✨</span>
+            <h2 id="current-provider-title">Cấu hình Google Gemini</h2>
+          </div>
+          <a href="#" target="_blank" id="get-key-link" class="get-key-link">
+            <span>Lấy API Key miễn phí</span>
+            <span class="ext-icon">↗</span>
+          </a>
+        </div>
+
+        <div class="form-group">
+          <label for="api-key-input">API Key <span class="required">*</span></label>
+          <div class="input-with-action">
+            <input type="password" id="api-key-input" placeholder="Nhập API key của bạn..." autocomplete="off" spellcheck="false">
+            <button type="button" id="toggle-key-visibility" class="icon-btn" title="Ẩn/Hiện API Key">
+              <span id="eye-icon">👁️</span>
+            </button>
+          </div>
+          <p class="field-hint" id="key-hint">Key được lưu an toàn trực tiếp trên trình duyệt của bạn.</p>
+        </div>
+
+        <div class="form-group">
+          <label for="model-select">Mô hình AI (Model)</label>
+          <select id="model-select" class="custom-select"></select>
+        </div>
+
+        <!-- Advanced Settings Accordion -->
+        <details class="advanced-section" id="advanced-accordion">
+          <summary class="advanced-summary">
+            <span>⚙️ Cài đặt nâng cao (Custom Base URL)</span>
+            <span class="arrow-indicator">▾</span>
+          </summary>
+          <div class="advanced-body">
+            <div class="form-group">
+              <label for="base-url-input">Custom Base URL (Tùy chọn)</label>
+              <input type="url" id="base-url-input" placeholder="https://api.openai.com/v1" spellcheck="false">
+              <p class="field-hint">Để trống để sử dụng endpoint mặc định của nhà cung cấp. Hữu ích khi bạn dùng proxy hoặc máy chủ riêng.</p>
+            </div>
+          </div>
+        </details>
+
+        <!-- Status Message Banner -->
+        <div id="test-status-box" class="status-box hidden">
+          <span class="status-icon" id="test-status-icon">ℹ️</span>
+          <span class="status-text" id="test-status-text">Đang kiểm tra kết nối...</span>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="card-actions">
+          <button type="button" id="test-btn" class="secondary-btn">
+            <span class="btn-spinner hidden" id="test-spinner">⏳</span>
+            <span id="test-btn-text">🧪 Kiểm tra kết nối (Test)</span>
+          </button>
+          <button type="button" id="save-btn" class="primary-btn">
+            <span>💾 Lưu cấu hình</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Security & Privacy Card -->
+      <section class="card glass security-card">
+        <h3>🛡️ Bảo mật & Quyền riêng tư</h3>
+        <ul>
+          <li>API Key của bạn chỉ được lưu trong <code>chrome.storage.local</code> trên máy tính cá nhân.</li>
+          <li>Không gửi qua bất kỳ máy chủ trung gian nào. Mọi yêu cầu được gửi trực tiếp tới máy chủ chính thức của nhà cung cấp bạn chọn.</li>
+          <li>Bạn có thể kiểm tra kết nối (Test) bất kỳ lúc nào để đảm bảo Key hoạt động và không hết quota.</li>
+        </ul>
+      </section>
+    </main>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast hidden">
+      <span id="toast-message">Đã lưu thành công!</span>
+    </div>
+  </div>
+
+  <script src="ai-helper.js"></script>
+  <script src="options.js"></script>
+</body>
+</html>

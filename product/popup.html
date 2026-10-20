@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Coursera Bypass</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <header>
+      <div class="header-row">
+        <div class="logo-container">
+          <span class="logo-icon">⚡</span>
+          <div>
+            <h1>Coursera Bypass</h1>
+            <p class="subtitle">Tester Assistant</p>
+          </div>
+        </div>
+        <button id="settings-toggle-btn" class="header-icon-btn" title="Cài đặt AI & API Key">⚙️</button>
+      </div>
+    </header>
+
+    <main>
+      <!-- Collapsible AI Config Card -->
+      <div class="card glass ai-config-card" id="ai-settings-card">
+        <div class="ai-card-header">
+          <div class="ai-card-title">
+            <span class="ai-badge-icon" id="popup-provider-icon">✨</span>
+            <span>Cấu hình AI API Key</span>
+          </div>
+          <button id="open-options-link" class="text-link-btn" title="Mở trang cài đặt chi tiết">Chi tiết ↗</button>
+        </div>
+
+        <div class="popup-form-group">
+          <label for="popup-provider-select">Nhà cung cấp:</label>
+          <select id="popup-provider-select" class="popup-select">
+            <option value="gemini">✨ Google Gemini</option>
+            <option value="openai">🧠 OpenAI (ChatGPT)</option>
+            <option value="deepseek">⚡ DeepSeek</option>
+          </select>
+        </div>
+
+        <div class="popup-form-group">
+          <label for="popup-api-key">API Key:</label>
+          <div class="popup-input-wrapper">
+            <input type="password" id="popup-api-key" placeholder="Dán API Key vào đây..." autocomplete="off" spellcheck="false">
+            <button type="button" id="popup-toggle-eye" class="eye-toggle-btn" title="Ẩn/Hiện Key">👁️</button>
+          </div>
+          <div class="key-help-row">
+            <a href="#" target="_blank" id="popup-get-key-link" class="popup-link">Lấy API key miễn phí ↗</a>
+          </div>
+        </div>
+
+        <div class="popup-form-group">
+          <label for="popup-model-select">Model:</label>
+          <select id="popup-model-select" class="popup-select"></select>
+        </div>
+
+        <div id="popup-status-badge" class="popup-status-badge hidden"></div>
+
+        <div class="popup-btn-row">
+          <button type="button" id="popup-test-btn" class="popup-sub-btn">🧪 Test</button>
+          <button type="button" id="popup-save-btn" class="popup-primary-btn">💾 Lưu Key</button>
+        </div>
+      </div>
+
+      <!-- Main Enable Toggle -->
+      <div class="card glass">
+        <div class="control-row">
+          <div class="control-label">
+            <span class="label-title">Bypass Active</span>
+            <span class="label-desc">Master switch for the extension</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="bypass-toggle" checked>
+            <span class="slider round"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Feature Toggles -->
+      <div class="card glass feature-toggles">
+        <div class="control-row spacing">
+          <div class="control-label">
+            <span class="label-title sub-feature">Auto-Click Buttons</span>
+            <span class="label-desc">Automatically click "Mark as completed"</span>
+          </div>
+          <label class="switch small">
+            <input type="checkbox" id="autoclick-toggle" checked>
+            <span class="slider round"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Stats Card -->
+      <div class="card glass stats-card">
+        <div class="stat-item">
+          <span class="stat-value" id="skip-count">0</span>
+          <span class="stat-name">Timers Skipped</span>
+        </div>
+      </div>
+    </main>
+
+    <footer>
+      <div class="footer-actions">
+        <button id="autofill-practice-btn" class="primary-btn" style="background: linear-gradient(135deg, #793ae4 0%, #0056d2 100%);">📝 Auto-Fill Practice (AI)</button>
+        <button id="open-readings-btn" class="primary-btn" style="background: linear-gradient(135deg, #0b408b 0%, #136ef0 100%);">📖 Auto-Complete Readings</button>
+        <button id="open-videos-btn" class="primary-btn" style="background: linear-gradient(135deg, #a54e0c 0%, #de6000 100%);">🎥 Auto-Watch Videos</button>
+        <button id="search-quiz-btn" class="primary-btn">🔍 Search Quiz Questions</button>
+        <button id="reset-stats-btn" class="secondary-btn">Reset Counter</button>
+      </div>
+    </footer>
+  </div>
+  <script src="ai-helper.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
