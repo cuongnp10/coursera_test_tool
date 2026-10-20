@@ -75,8 +75,8 @@
           chrome.storage.local.set({ skipCount: data.skipCount + 1 });
         });
 
-        // If this tab was opened as an auto-reading tab, close it after a brief delay
-        if (window.location.search.includes('autoCloseReading=1')) {
+        // If this tab was opened as an auto-reading or auto-video tab, close it after a brief delay
+        if (window.location.search.includes('autoCloseReading=1') || window.location.search.includes('autoWatchVideo=1')) {
           setTimeout(() => {
             chrome.runtime.sendMessage({ action: 'close_tab' });
           }, 1500);
@@ -97,10 +97,52 @@
     });
   }
 
-  function handleAutoWatchVideo() {
-    if (window.location.search.includes('autoWatchVideo=1')) {
-      const videos = document.querySelectorAll('video');
-      videos.forEach(video => {
+  function handleVideoPlayback() {
+    const isAutoWatch = window.location.search.includes('autoWatchVideo=1');
+    const videos = document.querySelectorAll('video');
+
+    videos.forEach(video => {
+      // 1. One-time 3-second skip to near end (duration - 2s) for all Coursera videos
+      if (!video.hasAttribute('data-video-skip-initialized')) {
+        video.setAttribute('data-video-skip-initialized', 'true');
+
+        setTimeout(() => {
+          if (!video.hasAttribute('data-video-skip-attempted') && !video.ended) {
+            video.setAttribute('data-video-skip-attempted', 'true');
+
+            const attemptSkip = () => {
+              if (!isNaN(video.duration) && video.duration > 3) {
+                try {
+                  const targetTime = Math.max(0, video.duration - 1);
+                  video.currentTime = targetTime;
+                  console.log(`⚡ Coursera Bypass: 1-time skip to near end (${targetTime.toFixed(1)}s / ${video.duration.toFixed(1)}s).`);
+                } catch (err) {
+                  console.warn('⚡ Coursera Bypass: Video skip prevented or blocked:', err);
+                }
+              }
+            };
+
+            if (video.readyState >= 1 && !isNaN(video.duration) && video.duration > 0) {
+              attemptSkip();
+            } else {
+              video.addEventListener('loadedmetadata', attemptSkip, { once: true });
+            }
+          }
+        }, 3000);
+
+        // Auto close tab when video finishes if opened from batch Auto-Watch
+        if (isAutoWatch) {
+          video.addEventListener('ended', () => {
+            console.log('⚡ Coursera Bypass: Video ended. Auto closing tab in 1.5s...');
+            setTimeout(() => {
+              chrome.runtime.sendMessage({ action: 'close_tab' });
+            }, 1500);
+          });
+        }
+      }
+
+      // 2. Batch auto-watch behavior (2x speed, muted, autoplay, keep-alive)
+      if (isAutoWatch) {
         if (!video.hasAttribute('data-auto-watched')) {
           video.setAttribute('data-auto-watched', 'true');
           video.muted = true;
@@ -119,8 +161,10 @@
         }
 
         playVideo(video);
-      });
+      }
+    });
 
+    if (isAutoWatch) {
       selectLowestVideoQuality();
     }
   }
@@ -212,12 +256,12 @@
   function initVideoTimerBypass() {
     setInterval(() => {
       unlockAllButtons();
-      handleAutoWatchVideo();
+      handleVideoPlayback();
     }, 1000);
 
     const observer = new MutationObserver(() => {
       unlockAllButtons();
-      handleAutoWatchVideo();
+      handleVideoPlayback();
     });
     observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['disabled', 'class'] });
   }

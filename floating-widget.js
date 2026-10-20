@@ -377,10 +377,10 @@
           <span>🤖 Giải Quiz AI</span>
         </button>
         <button class="panel-btn btn-readings" id="floating-readings-btn">
-          <span>📖 Auto-Complete Readings</span>
+          <span>📖 Auto-Complete All Readings</span>
         </button>
         <button class="panel-btn btn-videos" id="floating-videos-btn">
-          <span>🎥 Auto-Watch Videos</span>
+          <span>🎥 Auto-Watch All Videos</span>
         </button>
       </div>
 
@@ -492,12 +492,18 @@
       });
       const unique = [...new Set(links)];
       if (unique.length > 0) {
-        unique.forEach(link => {
-          const url = new URL(link);
+        const fullUrls = unique.map(link => {
+          const url = new URL(link, window.location.origin);
           url.searchParams.set('autoCloseReading', '1');
-          window.open(url.toString(), '_blank');
+          return url.toString();
         });
-        showFloatingStatus('success', `Đã mở ${unique.length} bài đọc!`);
+        chrome.runtime.sendMessage({
+          action: 'open_and_group_tabs',
+          urls: fullUrls,
+          title: 'Readings',
+          color: 'blue'
+        });
+        showFloatingStatus('success', `Đã mở và gom nhóm ${unique.length} bài đọc!`);
       } else {
         showFloatingStatus('error', 'Không tìm thấy bài đọc nào trên trang!');
       }
@@ -514,12 +520,18 @@
       });
       const unique = [...new Set(links)];
       if (unique.length > 0) {
-        unique.forEach(link => {
-          const url = new URL(link);
+        const fullUrls = unique.map(link => {
+          const url = new URL(link, window.location.origin);
           url.searchParams.set('autoWatchVideo', '1');
-          window.open(url.toString(), '_blank');
+          return url.toString();
         });
-        showFloatingStatus('success', `Đã mở ${unique.length} video!`);
+        chrome.runtime.sendMessage({
+          action: 'open_and_group_tabs',
+          urls: fullUrls,
+          title: 'Videos',
+          color: 'orange'
+        });
+        showFloatingStatus('success', `Đã mở và gom nhóm ${unique.length} video!`);
       } else {
         showFloatingStatus('error', 'Không tìm thấy video nào trên trang!');
       }
