@@ -48,7 +48,15 @@
         "http://localhost/*",
         "http://127.0.0.1/*"
       ],
-      "js": ["ai-helper.js", "content.js"],
+      "js": [
+        "ai-helper.js",
+        "video-timer-bypass.js",
+        "quiz-extractor.js",
+        "quiz-solver.js",
+        "practice-helper.js",
+        "floating-widget.js",
+        "content.js"
+      ],
       "run_at": "document_idle"
     }
   ]
