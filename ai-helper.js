@@ -102,7 +102,7 @@ async function testAiConnection(provider, apiKey, model, customBaseUrl) {
   try {
     if (provider === 'gemini') {
       const endpoint = customBaseUrl ? customBaseUrl.replace(/\/+$/, '') : 'https://generativelanguage.googleapis.com';
-      const url = `${endpoint}/v1beta/models/${encodeURIComponent(model || 'gemini-2.0-flash')}:generateContent?key=${encodeURIComponent(cleanKey)}`;
+      const url = `${endpoint}/v1beta/models/${encodeURIComponent(model || 'gemini-3.8-flash')}:generateContent?key=${encodeURIComponent(cleanKey)}`;
       
       const response = await fetch(url, {
         method: 'POST',
@@ -114,13 +114,14 @@ async function testAiConnection(provider, apiKey, model, customBaseUrl) {
       });
 
       const data = await response.json();
+
       if (!response.ok) {
         const errorMsg = data?.error?.message || `HTTP ${response.status}: ${response.statusText}`;
         return { success: false, message: `Lỗi Gemini: ${errorMsg}` };
       }
 
       const elapsed = Date.now() - startTime;
-      return { success: true, message: `Kết nối Gemini thành công! (${elapsed}ms)` };
+      return { success: true, message: `Kết nối Gemini 3.8 Flash thành công! (${elapsed}ms)` };
 
     } else if (provider === 'openai') {
       const endpoint = customBaseUrl ? customBaseUrl.replace(/\/+$/, '') : 'https://api.openai.com/v1';
@@ -190,13 +191,16 @@ async function testAiConnection(provider, apiKey, model, customBaseUrl) {
 /**
  * Generate AI Completion using the active provider
  */
-async function generateAiCompletion(prompt, systemInstruction = '') {
+async function generateAiCompletion(prompt, systemInstruction = '', options = {}) {
   const config = await getAiConfig();
   const provider = config.activeProvider || 'gemini';
   const providerData = config.providers[provider] || {};
   const cleanKey = (providerData.apiKey || '').trim();
   const model = providerData.model;
   const customBaseUrl = providerData.baseUrl;
+
+  const maxTokens = options.maxTokens || 1500;
+  const temperature = typeof options.temperature === 'number' ? options.temperature : 0.2;
 
   if (!cleanKey) {
     throw new Error(`Chưa có API Key cho ${PROVIDER_METADATA[provider]?.name || provider}. Vui lòng mở Cài đặt để nhập API Key!`);
@@ -210,8 +214,8 @@ async function generateAiCompletion(prompt, systemInstruction = '') {
     const requestBody = {
       contents: [{ parts: [{ text: prompt }] }],
       generationConfig: {
-        temperature: 0.3,
-        maxOutputTokens: 4000
+        temperature: temperature,
+        maxOutputTokens: maxTokens
       }
     };
     if (systemInstruction) {
@@ -227,6 +231,7 @@ async function generateAiCompletion(prompt, systemInstruction = '') {
     });
 
     const data = await response.json();
+
     if (!response.ok) {
       throw new Error(data?.error?.message || `Lỗi Gemini (HTTP ${response.status})`);
     }
@@ -258,7 +263,8 @@ async function generateAiCompletion(prompt, systemInstruction = '') {
       body: JSON.stringify({
         model: chosenModel,
         messages: messages,
-        temperature: 0.3
+        temperature: temperature,
+        max_tokens: maxTokens
       })
     });
 
@@ -297,7 +303,8 @@ async function generateAiCompletion(prompt, systemInstruction = '') {
       body: JSON.stringify({
         model: chosenModel,
         messages: messages,
-        temperature: 0.3
+        temperature: temperature,
+        max_tokens: maxTokens
       })
     });
 

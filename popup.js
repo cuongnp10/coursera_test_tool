@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   const searchQuizBtn = document.getElementById('search-quiz-btn');
   const openReadingsBtn = document.getElementById('open-readings-btn');
   const openVideosBtn = document.getElementById('open-videos-btn');
-  const autofillPracticeBtn = document.getElementById('autofill-practice-btn');
+  const suggestAiBtn = document.getElementById('suggest-ai-btn');
 
   // AI Configuration elements
   const settingsToggleBtn = document.getElementById('settings-toggle-btn');
@@ -191,28 +191,35 @@ document.addEventListener('DOMContentLoaded', async function() {
       popupProviderSelect.value = currentProvider;
       renderPopupAiForm(currentProvider);
     }
-  // Auto-fill Practice Assignment
-  if (autofillPracticeBtn) {
-    autofillPracticeBtn.addEventListener('click', function() {
-      const originalText = autofillPracticeBtn.textContent;
-      autofillPracticeBtn.disabled = true;
-      autofillPracticeBtn.textContent = '⏳ Đang phân tích đề...';
+  });
+
+  // In-Page AI Suggestions
+  if (suggestAiBtn) {
+    suggestAiBtn.addEventListener('click', function() {
+      const originalText = suggestAiBtn.textContent;
+      suggestAiBtn.disabled = true;
+      suggestAiBtn.textContent = '⏳ Đang quét & tạo gợi ý...';
 
       chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
         if (!tabs || tabs.length === 0) {
-          autofillPracticeBtn.disabled = false;
-          autofillPracticeBtn.textContent = originalText;
+          suggestAiBtn.disabled = false;
+          suggestAiBtn.textContent = originalText;
           return;
         }
 
-        chrome.tabs.sendMessage(tabs[0].id, { action: 'auto_fill_practice' }, function(response) {
-          autofillPracticeBtn.disabled = false;
+        chrome.tabs.sendMessage(tabs[0].id, { action: 'generate_ai_suggestions' }, function(response) {
+          suggestAiBtn.disabled = false;
+          if (chrome.runtime.lastError) {
+            suggestAiBtn.textContent = '❌ Hãy F5 lại trang web!';
+            setTimeout(() => { suggestAiBtn.textContent = originalText; }, 3500);
+            return;
+          }
           if (response && response.success) {
-            autofillPracticeBtn.textContent = '🎉 ' + (response.message || 'Đã nộp bài!');
-            setTimeout(() => { autofillPracticeBtn.textContent = originalText; }, 3500);
+            suggestAiBtn.textContent = '💡 ' + (response.message || 'Đã tạo gợi ý trên trang!');
+            setTimeout(() => { suggestAiBtn.textContent = originalText; }, 3500);
           } else {
-            autofillPracticeBtn.textContent = '❌ ' + (response?.message || 'Không tìm thấy bài tập!');
-            setTimeout(() => { autofillPracticeBtn.textContent = originalText; }, 3500);
+            suggestAiBtn.textContent = '❌ ' + (response?.message || 'Không tìm thấy ô nhập liệu!');
+            setTimeout(() => { suggestAiBtn.textContent = originalText; }, 3500);
           }
         });
       });
@@ -225,10 +232,25 @@ document.addEventListener('DOMContentLoaded', async function() {
     searchQuizBtn.textContent = 'Searching...';
     
     chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
-      if (tabs.length === 0) return;
-      
-      chrome.tabs.sendMessage(tabs[0].id, {action: 'extract_questions'}, function(response) {
+      if (!tabs || tabs.length === 0) {
         searchQuizBtn.textContent = originalText;
+        return;
+      }
+      
+      const currentTab = tabs[0];
+      chrome.tabs.sendMessage(currentTab.id, {action: 'extract_questions'}, function(response) {
+        searchQuizBtn.textContent = originalText;
+
+        if (chrome.runtime.lastError) {
+          console.warn('[Popup]', chrome.runtime.lastError.message);
+          if (currentTab.url && currentTab.url.startsWith('file://')) {
+            alert('⚠️ Trang tệp local (file://): Vui lòng vào chrome://extensions > Chi tiết Extension > Bật "Cho phép truy cập vào các URL tệp" (Allow access to file URLs) và F5 lại trang!');
+          } else {
+            searchQuizBtn.textContent = '❌ Hãy F5 trang web!';
+            setTimeout(() => { searchQuizBtn.textContent = originalText; }, 2500);
+          }
+          return;
+        }
         
         if (response && response.questions && response.questions.length > 0) {
           const openedTabIds = [];
@@ -266,13 +288,28 @@ document.addEventListener('DOMContentLoaded', async function() {
     openReadingsBtn.textContent = 'Opening...';
 
     chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
-      if (tabs.length === 0) return;
-      
-      chrome.tabs.sendMessage(tabs[0].id, {action: 'extract_reading_links'}, function(response) {
+      if (!tabs || tabs.length === 0) {
         openReadingsBtn.textContent = originalText;
+        return;
+      }
+      
+      const currentTab = tabs[0];
+      chrome.tabs.sendMessage(currentTab.id, {action: 'extract_reading_links'}, function(response) {
+        openReadingsBtn.textContent = originalText;
+
+        if (chrome.runtime.lastError) {
+          console.warn('[Popup]', chrome.runtime.lastError.message);
+          if (currentTab.url && currentTab.url.startsWith('file://')) {
+            alert('⚠️ Trang tệp local (file://): Vui lòng vào chrome://extensions > Chi tiết Extension > Bật "Cho phép truy cập vào các URL tệp" (Allow access to file URLs) và F5 lại trang!');
+          } else {
+            openReadingsBtn.textContent = '❌ Hãy F5 trang web!';
+            setTimeout(() => { openReadingsBtn.textContent = originalText; }, 2500);
+          }
+          return;
+        }
+
         if (response && response.links && response.links.length > 0) {
           response.links.forEach(link => {
-            // Append parameter
             const url = new URL(link);
             url.searchParams.set('autoCloseReading', '1');
             chrome.tabs.create({ url: url.toString(), active: false });
@@ -291,10 +328,26 @@ document.addEventListener('DOMContentLoaded', async function() {
     openVideosBtn.textContent = 'Opening...';
 
     chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
-      if (tabs.length === 0) return;
+      if (!tabs || tabs.length === 0) {
+        openVideosBtn.textContent = originalText;
+        return;
+      }
       
-      chrome.tabs.sendMessage(tabs[0].id, {action: 'extract_video_links'}, function(response) {
-        openReadingsBtn.textContent = originalText;
+      const currentTab = tabs[0];
+      chrome.tabs.sendMessage(currentTab.id, {action: 'extract_video_links'}, function(response) {
+        openVideosBtn.textContent = originalText;
+
+        if (chrome.runtime.lastError) {
+          console.warn('[Popup]', chrome.runtime.lastError.message);
+          if (currentTab.url && currentTab.url.startsWith('file://')) {
+            alert('⚠️ Trang tệp local (file://): Vui lòng vào chrome://extensions > Chi tiết Extension > Bật "Cho phép truy cập vào các URL tệp" (Allow access to file URLs) và F5 lại trang!');
+          } else {
+            openVideosBtn.textContent = '❌ Hãy F5 trang web!';
+            setTimeout(() => { openVideosBtn.textContent = originalText; }, 2500);
+          }
+          return;
+        }
+
         if (response && response.links && response.links.length > 0) {
           const openedTabIds = [];
           let processedCount = 0;
@@ -309,7 +362,6 @@ document.addEventListener('DOMContentLoaded', async function() {
               }
               processedCount++;
               
-              // Group them once all are opened
               if (processedCount === response.links.length && openedTabIds.length > 0) {
                 chrome.runtime.sendMessage({
                   action: 'group_tabs',
@@ -320,7 +372,6 @@ document.addEventListener('DOMContentLoaded', async function() {
               }
             });
           });
-          openVideosBtn.textContent = originalText;
         } else {
           openVideosBtn.textContent = 'No videos found!';
           setTimeout(() => { openVideosBtn.textContent = originalText; }, 2000);

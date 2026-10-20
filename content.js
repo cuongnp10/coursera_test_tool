@@ -464,10 +464,18 @@
       // Deduplicate
       const uniqueLinks = [...new Set(links)];
       sendResponse({ links: uniqueLinks });
+    } else if (request.action === 'generate_ai_suggestions') {
+      generateInPageSuggestions((status) => {
+        console.log('[Coursera AI Suggestions]', status);
+      }).then(res => {
+        sendResponse(res);
+      }).catch(err => {
+        sendResponse({ success: false, message: err.message || 'Lỗi không xác định!' });
+      });
+      return true; // async sendResponse
     } else if (request.action === 'auto_fill_practice') {
-      // Execute practice autofill
-      executeAutoFillPractice((status) => {
-        console.log('[Coursera AI]', status);
+      generateInPageSuggestions((status) => {
+        console.log('[Coursera AI Suggestions]', status);
       }).then(res => {
         sendResponse(res);
       }).catch(err => {
@@ -477,6 +485,27 @@
     }
     return true; 
   });
+
+  function cleanPlainTextParagraph(rawText) {
+    if (!rawText) return '';
+    return rawText
+      // Remove code fences
+      .replace(/```[\s\S]*?```/g, '')
+      // Remove markdown headers
+      .replace(/^#{1,6}\s+/gm, '')
+      // Remove bold/italic markers
+      .replace(/(\*\*|\*|__|_)(.*?)\1/g, '$2')
+      // Remove bullet points and lists
+      .replace(/^[\s*+-]+\s+/gm, '')
+      .replace(/^\s*\d+[\.\)]\s+/gm, '')
+      // Remove remaining markdown syntax characters
+      .replace(/[`#*~>]/g, '')
+      // Merge multiple lines into a single coherent paragraph
+      .replace(/\r?\n+/g, ' ')
+      // Collapse multiple spaces
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+  }
 
   // ==========================================
   // PRACTICE AUTO-FILL IMPLEMENTATION
@@ -505,136 +534,248 @@
       });
     }
 
-    // Editor target
-    const editor = document.querySelector('[data-slate-editor="true"][contenteditable="true"], [role="textbox"][contenteditable="true"], div.slate-editor [contenteditable="true"], div[contenteditable="true"], textarea');
+    // Editor targets (support single or multiple)
+    const editors = Array.from(document.querySelectorAll('[data-slate-editor="true"][contenteditable="true"], [role="textbox"][contenteditable="true"], div.slate-editor [contenteditable="true"], div[contenteditable="true"], textarea'));
 
-    return { title, context: context.trim(), questions: questions.trim(), editor };
+    return { title, context: context.trim(), questions: questions.trim(), editors, editor: editors[0] };
   }
 
-  function setSlateEditorContent(editor, text) {
-    editor.focus();
-
-    // Try Selection + execCommand (Standard way Slate captures input)
-    try {
-      const sel = window.getSelection();
-      const range = document.createRange();
-      range.selectNodeContents(editor);
-      sel.removeAllRanges();
-      sel.addRange(range);
-
-      const inserted = document.execCommand('insertText', false, text);
-      if (!inserted) throw new Error('execCommand returned false');
-    } catch (err) {
-      // Fallback: ClipboardEvent simulate paste
-      try {
-        const dt = new DataTransfer();
-        dt.setData('text/plain', text);
-        const pasteEvt = new ClipboardEvent('paste', {
-          bubbles: true,
-          cancelable: true,
-          clipboardData: dt
-        });
-        editor.dispatchEvent(pasteEvt);
-      } catch (pasteErr) {
-        // Direct DOM update fallback
-        editor.innerText = text;
-      }
+  // ==========================================
+  // IN-PAGE AI SUGGESTION & 1-CLICK COPY/DRAG
+  // ==========================================
+  function copyTextToClipboard(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(text).catch(() => {
+        fallbackCopyText(text);
+      });
     }
+    fallbackCopyText(text);
+  }
 
-    // Trigger synthetic React events
-    ['input', 'change'].forEach(type => {
-      editor.dispatchEvent(new Event(type, { bubbles: true }));
+  function fallbackCopyText(text) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    ta.style.top = '-9999px';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    try {
+      document.execCommand('copy');
+    } catch (e) {
+      console.warn('execCommand copy fallback failed:', e);
+    }
+    document.body.removeChild(ta);
+  }
+
+  function findPageEditors() {
+    const candidates = Array.from(document.querySelectorAll(
+      '[data-slate-editor="true"][contenteditable="true"], [role="textbox"][contenteditable="true"], div.slate-editor [contenteditable="true"], div[contenteditable="true"], textarea'
+    ));
+
+    return candidates.filter(el => {
+      if (el.closest('#coursera-floating-widget-root') || el.closest('.coursera-ai-suggestion-box')) {
+        return false;
+      }
+      const rect = el.getBoundingClientRect();
+      const style = window.getComputedStyle(el);
+      return style.display !== 'none' && style.visibility !== 'hidden' && rect.height > 10;
     });
   }
 
-  function tickHonorCodeAgreement() {
-    const checkbox = document.querySelector('#agreement-checkbox-base, [data-testid="agreement-checkbox"] input, input[type="checkbox"][id*="agreement"], input[type="checkbox"][required]');
-    if (checkbox) {
-      if (!checkbox.checked) {
-        checkbox.click();
-        if (!checkbox.checked) {
-          checkbox.checked = true;
-          checkbox.dispatchEvent(new Event('change', { bubbles: true }));
-          checkbox.dispatchEvent(new Event('input', { bubbles: true }));
+  function findEditorOuterWrapper(editor) {
+    return editor.closest('.rc-CMLEditor') ||
+           editor.closest('[data-testid="resizable-root"]') ||
+           editor.closest('[data-testid="resizable-container"]') ||
+           editor.closest('.slate-editor') ||
+           editor.parentElement;
+  }
+
+  function extractQuestionForEditor(editor, fallbackQuestions) {
+    // 1. Look for enclosing part/container
+    const part = editor.closest('[data-testid^="part-Submission_"], [data-testid^="part-"], .rc-FormPartsQuestion, fieldset, form, [role="group"]');
+    if (part) {
+      const clone = part.cloneNode(true);
+      clone.querySelectorAll('[data-slate-editor], textarea, input, button, [contenteditable], .coursera-ai-suggestion-box, script, style').forEach(el => el.remove());
+      const text = normalizeText(clone.innerText || clone.textContent);
+      if (text && text.length >= 15) {
+        return text;
+      }
+    }
+
+    // 2. Look for preceding headers/prompts
+    let cur = editor.parentElement;
+    for (let depth = 0; cur && depth < 6; depth++) {
+      let prev = cur.previousElementSibling;
+      while (prev) {
+        if (!prev.closest('.coursera-ai-suggestion-box') && !prev.querySelector('[data-slate-editor]')) {
+          const txt = normalizeText(prev.innerText || prev.textContent);
+          if (txt && txt.length > 20 && !txt.includes('I understand')) {
+            return txt;
+          }
         }
+        prev = prev.previousElementSibling;
       }
-      return true;
+      cur = cur.parentElement;
     }
-    return false;
+
+    return fallbackQuestions || 'Answer all required prompts thoroughly and concisely.';
   }
 
-  function triggerSubmitAssignment() {
-    const submitBtn = document.querySelector('[data-testid="submit-button"], button[aria-label="Submit"]');
-    if (submitBtn) {
-      if (submitBtn.hasAttribute('disabled')) {
-        submitBtn.removeAttribute('disabled');
-      }
-      if (submitBtn.disabled) {
-        submitBtn.disabled = false;
-      }
-      submitBtn.classList.remove('cds-button-disabled');
-      submitBtn.click();
-      return true;
-    }
-    return false;
-  }
-
-  async function executeAutoFillPractice(statusUpdateFn) {
+  async function generateInPageSuggestions(statusUpdateFn) {
     const notify = (msg) => {
       if (typeof statusUpdateFn === 'function') statusUpdateFn(msg);
     };
 
-    notify('🔍 Đang kiểm tra cấu trúc bài tập...');
-    const data = extractPracticeData();
+    notify('🔍 Đang quét câu hỏi & ô nhập liệu...');
 
-    if (!data.editor) {
-      throw new Error('Không tìm thấy khung soạn thảo bài làm (Slate/Text Editor) trên trang này!');
+    let editors = findPageEditors();
+    if (editors.length === 0) {
+      await new Promise(r => setTimeout(r, 600));
+      editors = findPageEditors();
     }
 
-    if (!data.questions && !data.title) {
-      throw new Error('Không tìm thấy nội dung câu hỏi/yêu cầu bài tập!');
+    if (editors.length === 0) {
+      throw new Error('Không tìm thấy khung soạn thảo bài làm (Slate/Text Editor) trên trang!');
     }
 
-    notify('🧠 Đang gửi yêu cầu tới AI để giải bài...');
-    const prompt = `Course / Assignment Title: ${data.title || 'Practice Assignment'}
+    const practiceData = extractPracticeData();
+    const title = practiceData.title || document.title || 'Assignment';
+    const context = practiceData.context || '';
 
-Activity Context & Background:
-${data.context || 'N/A'}
+    notify(`💡 Tìm thấy ${editors.length} ô soạn thảo, đang tạo gợi ý...`);
 
-Assignment Prompt & Detailed Requirements:
-${data.questions || 'Answer all questions thoroughly and provide comprehensive recommendations.'}
+    const results = [];
+    let firstBox = null;
 
-Instructions:
-1. Write a complete, comprehensive, high-scoring, and well-structured report in 100% professional academic English.
-2. Address each required section thoroughly with clear headings, detailed analysis, and concrete evidence bullets.
-3. Do not include any conversational preamble (such as "Here is your submission" or "Sure, I can help").
-4. Output only the ready-to-submit assignment response.`;
+    for (let i = 0; i < editors.length; i++) {
+      const editor = editors[i];
+      const wrapper = findEditorOuterWrapper(editor);
+      const questionText = extractQuestionForEditor(editor, practiceData.questions);
 
-    const systemInstruction = 'You are an elite academic project manager and subject-matter expert. You write comprehensive, high-scoring, rigorous assignment submissions in professional English with detailed analysis, clear section headings, and evidence bullets.';
+      // Check if an existing box is right before wrapper
+      let box = wrapper.previousElementSibling;
+      if (!box || !box.classList.contains('coursera-ai-suggestion-box')) {
+        box = document.createElement('div');
+        box.className = 'coursera-ai-suggestion-box';
+        wrapper.parentNode.insertBefore(box, wrapper);
+      }
+      if (!firstBox) firstBox = box;
 
-    const answer = await generateAiCompletion(prompt, systemInstruction);
+      // Render minimalist Glassmorphism Box
+      box.innerHTML = `
+        <div class="ai-box-header">
+          <div class="ai-box-title-group">
+            <span class="ai-box-icon">💡</span>
+            <span class="ai-box-title">Gợi ý AI ${editors.length > 1 ? `(#${i + 1})` : ''}</span>
+            <span class="ai-token-badge">⚡ Ngắn gọn &amp; Trọng tâm</span>
+          </div>
+          <div class="ai-box-actions">
+            <button type="button" class="ai-btn-close" title="Ẩn khung gợi ý">✕</button>
+          </div>
+        </div>
+        <div class="ai-box-alert" style="display: none;">
+          <span>✅</span>
+          <span><strong>Đã copy!</strong> Hãy ấn Ctrl+V hoặc kéo thả vào ô dưới.</span>
+        </div>
+        <div class="ai-box-body">
+          <div class="ai-box-text loading" title="Click vào vùng chữ để tự động bôi đen &amp; Copy ngay lập tức" tabindex="0">
+            <span>⏳ AI đang phân tích đề và tạo câu trả lời tối ưu token...</span>
+          </div>
+        </div>
+        <div class="ai-box-footer">
+          <span class="ai-box-hint">🖱️ <em>Click vào vùng chữ là toàn bộ nội dung được <strong>tô đen &amp; chép vào clipboard</strong> để ấn <strong>Ctrl+V</strong> hoặc kéo chuột trực tiếp vào ô soạn thảo bên dưới.</em></span>
+        </div>
+      `;
 
-    if (!answer || answer.length < 20) {
-      throw new Error('AI không tạo được nội dung trả lời hợp lệ.');
+      const closeBtn = box.querySelector('.ai-btn-close');
+      closeBtn.addEventListener('click', () => {
+        box.remove();
+      });
+
+      const alertEl = box.querySelector('.ai-box-alert');
+      const textEl = box.querySelector('.ai-box-text');
+
+      // Call AI with token optimization prompt
+      const systemInstruction = `You are an elite academic tutor.
+RULES:
+1. Output in 100% professional academic English.
+2. Be strictly concise, direct, and laser-focused on the question.
+3. Write ONLY ONE single concise paragraph. DO NOT break into multiple paragraphs or lines.
+4. DO NOT use any markdown formatting or symbols (NO headers ###, NO asterisks *, NO bullet points -, NO bold **, NO numbering). Output strictly plain text.
+5. NO introductory preamble (no greetings, pleasantries, or filler like "Here is...").
+6. NO concluding remarks or summaries.
+7. Provide a direct, ready-to-paste answer directly addressing the prompt criteria.`;
+
+      const prompt = `Course / Assignment Title: ${title}
+
+Background & Context:
+${context ? context.substring(0, 1500) : 'N/A'}
+
+Specific Question / Prompt:
+${questionText}
+
+Task: Provide the direct, most concise answer in EXACTLY ONE single paragraph of plain text. Absolutely NO markdown syntax (no ###, no *, no bullets). Only the essential core points and evidence.`;
+
+      try {
+        notify(`🧠 Đang tạo gợi ý câu #${i + 1}...`);
+        const rawAnswer = await generateAiCompletion(prompt, systemInstruction, { maxTokens: 600, temperature: 0.2 });
+        const answer = cleanPlainTextParagraph(rawAnswer);
+
+        textEl.classList.remove('loading');
+        textEl.innerText = answer;
+
+        let alertTimer = null;
+        textEl.addEventListener('click', () => {
+          // 1. Select All inside textEl
+          const range = document.createRange();
+          range.selectNodeContents(textEl);
+          const sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(range);
+
+          // 2. Auto Copy to Clipboard
+          copyTextToClipboard(textEl.innerText);
+
+          // 3. Show Alert Banner
+          alertEl.style.display = 'flex';
+          alertEl.classList.remove('ai-alert-pulse');
+          void alertEl.offsetWidth;
+          alertEl.classList.add('ai-alert-pulse');
+
+          if (alertTimer) clearTimeout(alertTimer);
+          alertTimer = setTimeout(() => {
+            alertEl.style.display = 'none';
+          }, 4500);
+        });
+
+        results.push({ success: true });
+      } catch (err) {
+        console.warn('[Coursera AI]', err);
+        textEl.classList.remove('loading');
+        textEl.innerHTML = `
+          <div style="color: #f87171; font-weight: 500;">
+            ⚠️ <strong>Chưa thể tạo gợi ý:</strong> ${err.message || 'Lỗi kết nối AI.'}<br>
+            <span style="font-size: 11px; color: #a7b4c9;">Vui lòng mở menu Nút nổi ⚡ hoặc Popup Extension > Bấm ⚙️ Cài đặt để nhập API Key!</span>
+          </div>
+        `;
+        results.push({ success: false, error: err.message });
+      }
     }
 
-    notify('✍️ Đang điền câu trả lời vào bài tập...');
-    setSlateEditorContent(data.editor, answer);
+    if (firstBox) {
+      firstBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
 
-    notify('🛡️ Đang tích cam kết Honor Code...');
-    await new Promise(r => setTimeout(r, 600));
-    tickHonorCodeAgreement();
-
-    notify('🚀 Đang gửi bài tập (Submit)...');
-    await new Promise(r => setTimeout(r, 800));
-    const submitted = triggerSubmitAssignment();
-
-    if (submitted) {
-      notify('🎉 Đã nộp bài tập thành công!');
-      return { success: true, message: 'Đã hoàn thành và nộp bài thành công!' };
+    const successCount = results.filter(r => r.success).length;
+    if (successCount > 0) {
+      notify(`🎉 Đã tạo ${successCount} hộp gợi ý AI trên trang!`);
+      return { success: true, message: `Đã tạo ${successCount} hộp gợi ý AI trên trang!` };
     } else {
-      notify('💾 Đã điền xong bài làm (Hãy bấm Submit để nộp)!');
-      return { success: true, message: 'Đã điền nội dung & tick cam kết thành công!' };
+      const firstErr = results[0]?.error || 'Lỗi tạo gợi ý';
+      notify(`❌ ${firstErr}`);
+      return { success: false, message: firstErr };
     }
   }
 
@@ -762,11 +903,12 @@ Instructions:
       .panel-btn:active {
         transform: scale(0.98);
       }
-      .btn-autofill {
-        background: linear-gradient(135deg, #793ae4 0%, #0056d2 100%);
-        box-shadow: 0 4px 14px rgba(121, 58, 228, 0.4);
+      .btn-suggest {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #9333ea 100%);
+        box-shadow: 0 4px 14px rgba(245, 158, 11, 0.4);
         font-weight: 700;
         padding: 12px 14px;
+        color: #ffffff;
       }
       .btn-readings {
         background: linear-gradient(135deg, #0b408b 0%, #136ef0 100%);
@@ -801,6 +943,136 @@ Instructions:
         background: rgba(239, 68, 68, 0.15);
         border-color: rgba(239, 68, 68, 0.3);
         color: #f87171;
+      }
+      .coursera-ai-suggestion-box {
+        margin: 16px 0 14px 0;
+        padding: 14px 16px;
+        background: rgba(19, 14, 41, 0.88);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(168, 85, 247, 0.4);
+        border-radius: 12px;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45), 0 0 16px rgba(139, 92, 246, 0.2);
+        color: #f8fafc;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        box-sizing: border-box;
+        position: relative;
+        z-index: 100;
+        transition: all 0.25s ease;
+      }
+      .coursera-ai-suggestion-box:hover {
+        border-color: rgba(168, 85, 247, 0.65);
+        box-shadow: 0 10px 36px rgba(0, 0, 0, 0.55), 0 0 20px rgba(139, 92, 246, 0.3);
+      }
+      .ai-box-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      .ai-box-title-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .ai-box-icon {
+        font-size: 16px;
+      }
+      .ai-box-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: #f3e8ff;
+      }
+      .ai-token-badge {
+        font-size: 10px;
+        font-weight: 600;
+        padding: 2px 7px;
+        border-radius: 4px;
+        background: rgba(168, 85, 247, 0.2);
+        border: 1px solid rgba(168, 85, 247, 0.4);
+        color: #d8b4fe;
+      }
+      .ai-box-actions {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .ai-btn-close {
+        background: transparent;
+        color: #94a3b8;
+        border: none;
+        font-size: 16px;
+        cursor: pointer;
+        padding: 2px 6px;
+        border-radius: 4px;
+        transition: all 0.15s ease;
+      }
+      .ai-btn-close:hover {
+        color: #fff;
+        background: rgba(255, 255, 255, 0.15);
+      }
+      .ai-box-alert {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 10px;
+        padding: 8px 12px;
+        border-radius: 8px;
+        background: rgba(16, 185, 129, 0.2);
+        border: 1px solid rgba(16, 185, 129, 0.5);
+        color: #34d399;
+        font-size: 12px;
+        box-shadow: 0 0 12px rgba(16, 185, 129, 0.25);
+      }
+      .ai-box-alert.ai-alert-pulse {
+        animation: aiBoxPulse 0.3s ease-out;
+      }
+      @keyframes aiBoxPulse {
+        0% { transform: scale(0.97); opacity: 0.6; }
+        100% { transform: scale(1); opacity: 1; }
+      }
+      .ai-box-body {
+        margin-bottom: 8px;
+      }
+      .ai-box-text {
+        background: rgba(10, 7, 24, 0.75);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 8px;
+        padding: 12px 14px;
+        font-size: 13px;
+        line-height: 1.6;
+        color: #f1f5f9;
+        white-space: pre-wrap;
+        user-select: all;
+        -webkit-user-select: all;
+        cursor: pointer;
+        max-height: 360px;
+        overflow-y: auto;
+        transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+      }
+      .ai-box-text:hover {
+        border-color: rgba(168, 85, 247, 0.6);
+        background: rgba(10, 7, 24, 0.9);
+        box-shadow: 0 0 14px rgba(168, 85, 247, 0.2);
+      }
+      .ai-box-text:active {
+        background: rgba(139, 92, 246, 0.15);
+      }
+      .ai-box-text.loading {
+        cursor: wait;
+        color: #cbd5e1;
+        font-style: italic;
+      }
+      .ai-box-footer {
+        display: flex;
+        align-items: center;
+      }
+      .ai-box-hint {
+        font-size: 11px;
+        color: #94a3b8;
+        line-height: 1.4;
       }
       .panel-footer-links {
         display: flex;
@@ -849,8 +1121,8 @@ Instructions:
       <div id="floating-panel-status" class="panel-status-banner" style="display: none;"></div>
 
       <div class="panel-actions">
-        <button class="panel-btn btn-autofill" id="floating-autofill-btn">
-          <span>📝 Auto-Fill Practice (AI)</span>
+        <button class="panel-btn btn-suggest" id="floating-suggest-btn">
+          <span>💡 Tạo gợi ý AI</span>
         </button>
         <button class="panel-btn btn-readings" id="floating-readings-btn">
           <span>📖 Auto-Complete Readings</span>
@@ -937,29 +1209,29 @@ Instructions:
       statusBox.style.display = 'none';
     }
 
-    // Auto-Fill Button in Floating Panel
-    const autofillBtn = panel.querySelector('#floating-autofill-btn');
-    autofillBtn.addEventListener('click', async () => {
-      const origText = autofillBtn.innerText;
-      autofillBtn.disabled = true;
-      autofillBtn.innerText = '⏳ Đang phân tích đề...';
-      showFloatingStatus('', 'Đang quét đề bài...');
+    // AI Suggestion Button in Floating Panel
+    const suggestBtn = panel.querySelector('#floating-suggest-btn');
+    suggestBtn.addEventListener('click', async () => {
+      const origText = suggestBtn.innerText;
+      suggestBtn.disabled = true;
+      suggestBtn.innerText = '⏳ Đang quét câu hỏi...';
+      showFloatingStatus('', 'Đang quét đề bài & ô nhập liệu...');
 
       try {
-        await executeAutoFillPractice((status) => {
+        const res = await generateInPageSuggestions((status) => {
           showFloatingStatus('', status);
-          autofillBtn.innerText = status.length > 22 ? status.substring(0, 20) + '...' : status;
+          suggestBtn.innerText = status.length > 22 ? status.substring(0, 20) + '...' : status;
         });
-        showFloatingStatus('success', '🎉 Đã hoàn thành và nộp bài!');
-        autofillBtn.innerText = '🎉 Đã hoàn thành!';
+        showFloatingStatus('success', res.message || '🎉 Đã tạo gợi ý trên trang!');
+        suggestBtn.innerText = '💡 Đã tạo gợi ý!';
       } catch (err) {
         showFloatingStatus('error', '❌ ' + (err.message || 'Lỗi'));
-        autofillBtn.innerText = '❌ Thất bại';
+        suggestBtn.innerText = '❌ Thất bại';
       } finally {
         setTimeout(() => {
-          autofillBtn.disabled = false;
-          autofillBtn.innerText = origText;
-        }, 4000);
+          suggestBtn.disabled = false;
+          suggestBtn.innerText = origText;
+        }, 3500);
       }
     });
 
