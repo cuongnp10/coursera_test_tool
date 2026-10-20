@@ -503,7 +503,7 @@
           title: 'Readings',
           color: 'blue'
         });
-        showFloatingStatus('success', `Đã mở và gom nhóm ${unique.length} bài đọc!`);
+        showFloatingStatus('success', `Đang mở so le và gom nhóm ${unique.length} bài đọc...`);
       } else {
         showFloatingStatus('error', 'Không tìm thấy bài đọc nào trên trang!');
       }
@@ -531,7 +531,7 @@
           title: 'Videos',
           color: 'orange'
         });
-        showFloatingStatus('success', `Đã mở và gom nhóm ${unique.length} video!`);
+        showFloatingStatus('success', `Đang mở so le và gom nhóm ${unique.length} video...`);
       } else {
         showFloatingStatus('error', 'Không tìm thấy video nào trên trang!');
       }

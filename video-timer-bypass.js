@@ -111,7 +111,7 @@
             video.setAttribute('data-video-skip-attempted', 'true');
 
             const attemptSkip = () => {
-              if (!isNaN(video.duration) && video.duration > 3) {
+              if (!isNaN(video.duration) && video.duration > 2) {
                 try {
                   const targetTime = Math.max(0, video.duration - 1);
                   video.currentTime = targetTime;
