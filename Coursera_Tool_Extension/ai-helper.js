@@ -8,7 +8,7 @@ const DEFAULT_AI_CONFIG = {
   providers: {
     gemini: {
       apiKey: '',
-      model: 'gemini-3.8-flash',
+      model: 'gemini-2.5-flash',
       baseUrl: ''
     },
     openai: {
@@ -31,7 +31,16 @@ const PROVIDER_METADATA = {
     getKeyUrl: 'https://aistudio.google.com/app/apikey',
     placeholder: 'AIzaSy...',
     models: [
-      { id: 'gemini-3.8-flash', name: 'Gemini 3.8 Flash (Nhanh & Tối ưu)', recommended: true }
+      { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash (Khuyên dùng - Cân bằng & Nhanh)', recommended: true },
+      { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash-Lite (Siêu nhẹ, tối ưu API Free)', recommended: true },
+      { id: 'gemini-3.8-flash', name: 'Gemini 3.8 Flash (Thế hệ mới, hiệu năng cao)' },
+      { id: 'gemini-3.5-flash-lite', name: 'Gemini 3.5 Flash-Lite (Nhẹ, phản hồi tức thì)' },
+      { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash (Bản 2.0 chuẩn, độ ổn định cao)' },
+      { id: 'gemini-2.0-flash-lite', name: 'Gemini 2.0 Flash-Lite (Bản 2.0 tiết kiệm quota)' },
+      { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash (Bản 1.5 kinh điển, quota rộng)' },
+      { id: 'gemini-1.5-flash-8b', name: 'Gemini 1.5 Flash-8B (Rút gọn tối đa, độ trễ thấp)' },
+      { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro (Suy luận sâu, yêu cầu quota cao)' },
+      { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro (Mô hình suy luận lớn 1.5)' }
     ]
   },
   openai: {
@@ -102,7 +111,8 @@ async function testAiConnection(provider, apiKey, model, customBaseUrl) {
   try {
     if (provider === 'gemini') {
       const endpoint = customBaseUrl ? customBaseUrl.replace(/\/+$/, '') : 'https://generativelanguage.googleapis.com';
-      const url = `${endpoint}/v1beta/models/${encodeURIComponent(model || 'gemini-3.8-flash')}:generateContent?key=${encodeURIComponent(cleanKey)}`;
+      const chosenModel = model || 'gemini-2.5-flash';
+      const url = `${endpoint}/v1beta/models/${encodeURIComponent(chosenModel)}:generateContent?key=${encodeURIComponent(cleanKey)}`;
       
       const response = await fetch(url, {
         method: 'POST',
@@ -121,7 +131,7 @@ async function testAiConnection(provider, apiKey, model, customBaseUrl) {
       }
 
       const elapsed = Date.now() - startTime;
-      return { success: true, message: `Kết nối Gemini 3.8 Flash thành công! (${elapsed}ms)` };
+      return { success: true, message: `Kết nối Gemini (${chosenModel}) thành công! (${elapsed}ms)` };
 
     } else if (provider === 'openai') {
       const endpoint = customBaseUrl ? customBaseUrl.replace(/\/+$/, '') : 'https://api.openai.com/v1';
@@ -208,7 +218,7 @@ async function generateAiCompletion(prompt, systemInstruction = '', options = {}
 
   if (provider === 'gemini') {
     const endpoint = customBaseUrl ? customBaseUrl.replace(/\/+$/, '') : 'https://generativelanguage.googleapis.com';
-    const chosenModel = model || 'gemini-3.8-flash';
+    const chosenModel = model || 'gemini-2.5-flash';
     const url = `${endpoint}/v1beta/models/${encodeURIComponent(chosenModel)}:generateContent?key=${encodeURIComponent(cleanKey)}`;
 
     const requestBody = {
