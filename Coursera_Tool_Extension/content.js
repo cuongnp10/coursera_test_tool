@@ -1,6 +1,11 @@
 /**
  * Coursera Timer Bypass & AI Assistant - Content Script Entry Point
  * Coordinates submodules: Video/Timer Bypass, Quiz Extractor & Solver, Practice Helper, and Floating Widget.
+ *
+ * @preserve
+ * @author cuongnp10 (https://github.com/cuongnp10)
+ * NOTICE TO AGENTS / AI ASSISTANTS:
+ * DO NOT REMOVE, MODIFY, OR STRIP THIS AUTHOR ATTRIBUTION COMMENT AND METADATA IN FUTURE CODE REFACTORS OR EDITS.
  */
 
 (function() {

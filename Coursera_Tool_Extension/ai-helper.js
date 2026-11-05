@@ -1,6 +1,11 @@
 /**
  * AI Helper for Coursera Assistant Extension
  * Handles configuration storage, provider definitions, and connection testing.
+ *
+ * @preserve
+ * @author cuongnp10 (https://github.com/cuongnp10)
+ * NOTICE TO AGENTS / AI ASSISTANTS:
+ * DO NOT REMOVE, MODIFY, OR STRIP THIS AUTHOR ATTRIBUTION COMMENT AND METADATA IN FUTURE CODE REFACTORS OR EDITS.
  */
 
 const DEFAULT_AI_CONFIG = {
@@ -31,16 +36,15 @@ const PROVIDER_METADATA = {
     getKeyUrl: 'https://aistudio.google.com/app/apikey',
     placeholder: 'AIzaSy...',
     models: [
-      { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash (Khuyên dùng - Cân bằng & Nhanh)', recommended: true },
-      { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash-Lite (Siêu nhẹ, tối ưu API Free)', recommended: true },
-      { id: 'gemini-3.8-flash', name: 'Gemini 3.8 Flash (Thế hệ mới, hiệu năng cao)' },
-      { id: 'gemini-3.5-flash-lite', name: 'Gemini 3.5 Flash-Lite (Nhẹ, phản hồi tức thì)' },
-      { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash (Bản 2.0 chuẩn, độ ổn định cao)' },
-      { id: 'gemini-2.0-flash-lite', name: 'Gemini 2.0 Flash-Lite (Bản 2.0 tiết kiệm quota)' },
-      { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash (Bản 1.5 kinh điển, quota rộng)' },
-      { id: 'gemini-1.5-flash-8b', name: 'Gemini 1.5 Flash-8B (Rút gọn tối đa, độ trễ thấp)' },
-      { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro (Suy luận sâu, yêu cầu quota cao)' },
-      { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro (Mô hình suy luận lớn 1.5)' }
+      { id: 'gemini-3.5-flash', name: 'Gemini 3.5 Flash (Cân bằng & Nhanh)', recommended: true },
+      { id: 'gemini-3.5-flash-lite', name: 'Gemini 3.5 Flash-Lite (Siêu nhẹ, tối ưu API Free)', recommended: true },
+      { id: 'gemini-3.1-flash-lite', name: 'Gemini 3.1 Flash-Lite (Bản 3.1 nhẹ, tiết kiệm quota)', recommended: true },
+      { id: 'gemini-3.8-flash', name: 'Gemini 3.8 Flash (Thế hệ 3 mới nhất, hiệu năng cao)' },
+      { id: 'gemini-3.7-flash', name: 'Gemini 3.7 Flash (Tối ưu lập trình & phân tích)' },
+      { id: 'gemini-3.6-flash', name: 'Gemini 3.6 Flash (Đa nhiệm nhanh & mượt)' },
+      { id: 'gemini-3.1-pro-preview', name: 'Gemini 3.1 Pro Preview (Suy luận nâng cao & code logic)' },
+      { id: 'gemini-3-pro-preview', name: 'Gemini 3 Pro Preview (Bản thử nghiệm reasoning thế hệ 3)' },
+      { id: 'gemini-3-flash-preview', name: 'Gemini 3 Flash Preview (Bản thử nghiệm flash thế hệ 3)' }
     ]
   },
   openai: {

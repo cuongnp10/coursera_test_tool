@@ -2,6 +2,7 @@
   "manifest_version": 3,
   "name": "Coursera Timer Bypass",
   "version": "1.0.2",
+  "author": "cuongnp10 (https://github.com/cuongnp10)",
   "description": "Advanced Coursera automation suite: Bypass timers, bulk open readings, and auto-manage video playbacks.",
   "permissions": [
     "storage",
