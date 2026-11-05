@@ -18,7 +18,7 @@ Extension hỗ trợ học tập và tự động hóa toàn diện trên Course
 4. **Auto-Complete All Readings**: Tự động mở bài đọc, đánh dấu hoàn thành và đóng tab gọn gàng.
 5. **Auto-Watch All Videos**: Tự động gom video vào nhóm tab riêng, mở phát và chuyển bài tự động.
 6. **Cấu hình Đa Nhà Cung Cấp AI (Multi-Provider AI)**:
-   - **Google Gemini**: Hỗ trợ `gemini-3.8-flash` (Miễn phí, tốc độ cao).
+   - **Google Gemini**: Hỗ trợ `gemini-3.*-flash` (Miễn phí, tốc độ cao).
    - **OpenAI**: Hỗ trợ `gpt-4o-mini`, `gpt-4o`, `o3-mini`.
    - **DeepSeek**: Hỗ trợ `deepseek-chat` (V3), `deepseek-reasoner` (R1).
    - **Custom Base URL**: Hỗ trợ tùy biến endpoint (reverse proxy, server nội bộ hoặc Ollama).

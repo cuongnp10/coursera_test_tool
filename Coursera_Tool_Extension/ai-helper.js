@@ -13,7 +13,7 @@ const DEFAULT_AI_CONFIG = {
   providers: {
     gemini: {
       apiKey: '',
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.5-flash',
       baseUrl: ''
     },
     openai: {
@@ -115,7 +115,7 @@ async function testAiConnection(provider, apiKey, model, customBaseUrl) {
   try {
     if (provider === 'gemini') {
       const endpoint = customBaseUrl ? customBaseUrl.replace(/\/+$/, '') : 'https://generativelanguage.googleapis.com';
-      const chosenModel = model || 'gemini-2.5-flash';
+      const chosenModel = model || 'gemini-3.5-flash';
       const url = `${endpoint}/v1beta/models/${encodeURIComponent(chosenModel)}:generateContent?key=${encodeURIComponent(cleanKey)}`;
       
       const response = await fetch(url, {

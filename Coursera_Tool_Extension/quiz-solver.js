@@ -1,6 +1,6 @@
 /**
  * Coursera Quiz AI Solver
- * Scans multiple-choice and multi-select questions, queries Gemini 3.8 Flash with structured JSON schema,
+ * Scans multiple-choice and multi-select questions, queries Gemini 3.* Flash with structured JSON schema,
  * and automatically selects & visually badges correct answers on the page.
  *
  * @preserve
@@ -168,7 +168,7 @@
       throw new Error('Không tìm thấy câu hỏi trắc nghiệm (Quiz) nào trên trang! Hãy mở Console (F12) để xem log chi tiết.');
     }
 
-    notify(`🧠 Đang gửi ${questions.length} câu hỏi sang Gemini 3.8 Flash...`);
+    notify(`🧠 Đang gửi ${questions.length} câu hỏi sang Gemini`);
     console.log(`[Coursera Quiz AI] Đang chuẩn bị prompt cho ${questions.length} câu hỏi...`);
 
     const promptQuestionsText = questions.map(q => {
